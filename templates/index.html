@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Product Analysis</title>
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/styles.css') }}"
+    />
+    <script>
+      async function fetchProductNames() {
+        const response = await fetch("/product_names");
+        const data = await response.json();
+        return data.product_names;
+      }
+
+      document.addEventListener("DOMContentLoaded", () => {
+        const input = document.getElementById("product_name");
+        const suggestions = document.getElementById("suggestions");
+
+        let productNames = [];
+
+        fetchProductNames().then((names) => {
+          productNames = names;
+        });
+
+        input.addEventListener("input", () => {
+          const query = input.value.toLowerCase();
+          suggestions.innerHTML = "";
+          if (query) {
+            const filteredNames = productNames.filter((name) =>
+              name.toLowerCase().includes(query)
+            );
+            filteredNames.forEach((name) => {
+              const div = document.createElement("div");
+              div.textContent = name;
+              div.addEventListener("click", () => {
+                input.value = name;
+                suggestions.innerHTML = "";
+              });
+              suggestions.appendChild(div);
+            });
+          }
+        });
+
+        document.addEventListener("click", (e) => {
+          if (!suggestions.contains(e.target) && e.target !== input) {
+            suggestions.innerHTML = "";
+          }
+        });
+      });
+    </script>
+  </head>
+  <body>
+    <div class="container">
+      <h1>PRODUCT SENTIMENTAL ANALYSIS</h1>
+      <form method="post">
+        <div class="form-group">
+          <label for="product_name">Product Name:</label>
+          <input
+            type="text"
+            id="product_name"
+            name="product_name"
+            autocomplete="off"
+          />
+          <div id="suggestions"></div>
+        </div>
+        <button type="submit">Analyze</button>
+      </form>
+
+      {% if result %}
+      <h2>Analysis for {{ product_name }}</h2>
+      <img
+        src="data:image/png;base64,{{ plot_url }}"
+        alt="Rating Distribution"
+      />
+      <p>{{ result }}</p>
+      {% endif %}
+    </div>
+  </body>
+</html>
