@@ -33,15 +33,6 @@ A modern web application for analyzing and reviewing products, built with a focu
 - **LocalStorage API:** For browser-based persistence.
 
 ---
-
-## 🖥️ Screenshots
-
-> _Add screenshots of your UI here!_
-
-| Dashboard | Customer Reviews |
-|-----------|-----------------|
-| ![Dashboard Screenshot](static/img/dashboard-placeholder.png) | ![Reviews Screenshot](static/img/reviews-placeholder.png) |
-
 ---
 
 ## 📦 Getting Started
@@ -73,10 +64,6 @@ Pull requests are welcome! For major changes, please open an issue first to disc
 
 ## 📧 Contact
 
-**Your Name**  
-[LinkedIn](https://www.linkedin.com/in/yourprofile)  
-[Email](mailto:your.email@example.com)
-
 ---
 
 ## 🎯 Conclusion
@@ -87,12 +74,4 @@ Feel free to explore the code and dataset to extend the functionality or adapt i
 
 ---
 
-# (No changes needed to the README file for pushing. Use the commands below.)
 
-To push your committed changes to your GitHub repository, run the following commands in your terminal:
-
-```bash
-git add .
-git commit -m "Your commit message"
-git push origin main
-```
