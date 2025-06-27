@@ -3,6 +3,12 @@ body {
   margin: 0;
   padding: 0;
   background-color: #f4f4f4;
+  animation: gradientBG 10s ease-in-out infinite alternate;
+}
+
+@keyframes gradientBG {
+  0% { background: linear-gradient(135deg, #f8fafc 0%, #e0e7ff 100%);}
+  100% { background: linear-gradient(135deg, #e0e7ff 0%, #f8fafc 100%);}
 }
 
 .container {
@@ -14,8 +20,13 @@ body {
   margin-top: 50px;
 }
 
-h1 {
+.main-card {
+  animation: fadeIn 1.2s;
+}
+
+h1, h2 {
   text-align: center;
+  animation: bounceIn 1s;
 }
 
 .form-group {
@@ -25,12 +36,21 @@ h1 {
 label {
   display: block;
   margin-bottom: 5px;
+  animation: fadeInLeft 1s;
 }
 
 input[type="text"] {
   width: 100%;
   padding: 8px;
   box-sizing: border-box;
+  transition: box-shadow 0.3s, border-color 0.3s;
+  animation: fadeInRight 1s;
+}
+
+input[type="text"]:focus {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 0.2rem rgba(99,102,241,.15);
+  animation: pulse 0.7s;
 }
 
 button {
@@ -53,6 +73,7 @@ h2 {
 img {
   max-width: 100%;
   height: auto;
+  animation: zoomIn 1s;
 }
 
 #suggestions {
@@ -62,13 +83,31 @@ img {
   position: absolute;
   z-index: 1000;
   background: #fff;
+  animation: fadeInDown 0.5s;
 }
 
 #suggestions div {
   padding: 8px;
   cursor: pointer;
+  animation: fadeInLeft 0.4s;
 }
 
 #suggestions div:hover {
   background: #eee;
+  animation: headShake 0.5s;
 }
+
+.btn-analyze {
+  animation: tada 1.5s infinite alternate;
+}
+
+.result-section {
+  animation: fadeInUp 1.2s;
+}
+
+.lead.text-center {
+  animation: fadeIn 2s;
+}
+
+/* Add Animate.css utility classes for extra effect */
+.animate__animated {}

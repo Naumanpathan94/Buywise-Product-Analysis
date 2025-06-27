@@ -3,11 +3,192 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Product Analysis</title>
+    <title>BuyWise</title>
+    <!-- Bootstrap 5 CSS -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+      crossorigin="anonymous"
+    />
+    <!-- Animate.css -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"
+    />
     <link
       rel="stylesheet"
       href="{{ url_for('static', filename='css/styles.css') }}"
     />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css"
+    />
+    <style>
+      html, body {
+        height: 100%;
+        width: 100%;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        background: linear-gradient(135deg, #18181b 0%, #312e81 100%);
+        min-height: 100vh;
+        min-width: 100vw;
+        width: 100vw;
+        height: 100vh;
+        color: #e5e7eb;
+        overflow-x: hidden;
+      }
+      .container {
+        min-width: 100vw;
+        min-height: 100vh;
+        width: 100vw;
+        height: 100vh;
+        padding: 0 !important;
+        margin: 0 !important;
+        display: flex !important;
+        justify-content: center !important;
+        align-items: center !important;
+      }
+      .main-card {
+        background: #232336;
+        border-radius: 1.5rem;
+        box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.25);
+        padding: 2.5rem 2rem;
+        margin: 0 auto;
+        color: #e5e7eb;
+        width: 100vw;
+        max-width: 100vw;
+      }
+      #suggestions {
+        position: absolute;
+        z-index: 1000;
+        width: 100%;
+        background: #232336;
+        border: 1px solid #374151;
+        border-top: none;
+        border-radius: 0 0 0.5rem 0.5rem;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+        max-height: 200px;
+        overflow-y: auto;
+      }
+      #suggestions div {
+        padding: 0.5rem 1rem;
+        cursor: pointer;
+        transition: background 0.2s;
+        color: #e5e7eb;
+      }
+      #suggestions div:hover {
+        background: #3730a3;
+        color: #fff;
+      }
+      .form-group {
+        position: relative;
+      }
+      .form-control, .form-control:focus {
+        background: #18181b;
+        color: #e5e7eb;
+        border: 1px solid #6366f1;
+      }
+      .btn-analyze {
+        background: linear-gradient(90deg, #6366f1 0%, #60a5fa 100%);
+        color: #fff;
+        border: none;
+        border-radius: 2rem;
+        padding: 0.5rem 2rem;
+        font-weight: 600;
+        transition: background 0.2s, transform 0.2s;
+      }
+      .btn-analyze:hover {
+        background: linear-gradient(90deg, #60a5fa 0%, #6366f1 100%);
+        transform: translateY(-2px) scale(1.03);
+      }
+      h1 {
+        font-family: 'Segoe UI', 'Roboto', sans-serif;
+        font-weight: 700;
+        letter-spacing: 1px;
+        color: #a5b4fc;
+      }
+      .result-section {
+        animation: fadeInUp 1s;
+        background: #18181b;
+        border-radius: 1rem;
+        box-shadow: 0 4px 24px rgba(99,102,241,0.10);
+      }
+      .about-section {
+        background: linear-gradient(90deg, #232336 0%, #18181b 100%);
+        border-radius: 1rem;
+        box-shadow: 0 4px 24px rgba(99,102,241,0.07);
+        padding: 2rem 2rem 1.5rem 2rem;
+        margin-bottom: 2.5rem;
+        margin-top: 1.5rem;
+        font-family: 'Segoe UI', 'Roboto', sans-serif;
+        animation: fadeIn 1.2s;
+        color: #e5e7eb;
+      }
+      .about-title {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #a5b4fc;
+        letter-spacing: 1px;
+        margin-bottom: 1rem;
+      }
+      .about-features {
+        font-size: 1.1rem;
+        color: #c7d2fe;
+        margin-bottom: 0;
+        padding-left: 0;
+        list-style: none;
+      }
+      .about-features li {
+        margin-bottom: 0.7rem;
+        display: flex;
+        align-items: center;
+        font-size: 1.08rem;
+        animation: fadeInLeft 1s;
+      }
+      .about-features i {
+        color: #818cf8;
+        font-size: 1.3rem;
+        margin-right: 0.7rem;
+        min-width: 1.6rem;
+      }
+      .about-highlight {
+        color: #818cf8;
+        font-weight: 600;
+      }
+      .card {
+        background: #232336;
+        color: #e5e7eb;
+      }
+      .form-control-lg, .form-control-lg:focus {
+        background: #18181b;
+        color: #e5e7eb;
+        border: 1px solid #6366f1;
+      }
+      .list-group-item {
+        background: #232336;
+        color: #e5e7eb;
+        border: none;
+      }
+      .list-group-item-action:hover, .list-group-item-action:focus {
+        background: #3730a3;
+        color: #fff;
+      }
+      .badge.bg-primary, .badge.bg-info, .badge.bg-warning, .badge.bg-success, .badge.bg-danger, .badge.bg-secondary {
+        color: #fff !important;
+      }
+      .bg-primary { background-color: #6366f1 !important; }
+      .bg-info { background-color: #60a5fa !important; }
+      .bg-warning { background-color: #f59e42 !important; }
+      .bg-success { background-color: #22c55e !important; }
+      .bg-danger { background-color: #ef4444 !important; }
+      .bg-secondary { background-color: #64748b !important; }
+      .bg-light { background-color: #18181b !important; color: #e5e7eb !important; }
+      .shadow, .shadow-lg {
+        box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.25) !important;
+      }
+    </style>
     <script>
       async function fetchProductNames() {
         const response = await fetch("/product_names");
@@ -35,6 +216,7 @@
             filteredNames.forEach((name) => {
               const div = document.createElement("div");
               div.textContent = name;
+              div.classList.add("list-group-item", "list-group-item-action");
               div.addEventListener("click", () => {
                 input.value = name;
                 suggestions.innerHTML = "";
@@ -51,32 +233,247 @@
         });
       });
     </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+    <script src="{{ url_for('static', filename='js/legacy-customer-review.js') }}"></script>
   </head>
   <body>
-    <div class="container">
-      <h1>PRODUCT SENTIMENTAL ANALYSIS</h1>
-      <form method="post">
-        <div class="form-group">
-          <label for="product_name">Product Name:</label>
-          <input
-            type="text"
-            id="product_name"
-            name="product_name"
-            autocomplete="off"
-          />
-          <div id="suggestions"></div>
-        </div>
-        <button type="submit">Analyze</button>
-      </form>
+    <div class="container d-flex justify-content-center align-items-center min-vh-100">
+      <div class="main-card shadow-lg animate__animated animate__fadeIn">
+        <h1 class="mb-4 text-center animate__animated animate__fadeInDown">BUYWISE SENTIMENTAL ANALYSIS</h1>
+        
+        <!-- Product Name Search Box at the Top -->
+        <form method="post" autocomplete="off">
+          <div class="form-group mb-4">
+            <label for="product_name" class="form-label fw-semibold">Product Name:</label>
+            <input
+              type="text"
+              id="product_name"
+              name="product_name"
+              class="form-control form-control-lg"
+              autocomplete="off"
+              placeholder="Type to search..."
+              required
+            />
+            <div id="suggestions" class="list-group"></div>
+          </div>
+          <div class="d-flex justify-content-center">
+            <button type="submit" class="btn btn-analyze btn-lg shadow animate__animated animate__pulse animate__infinite">Analyze</button>
+          </div>
+        </form>
 
-      {% if result %}
-      <h2>Analysis for {{ product_name }}</h2>
-      <img
-        src="data:image/png;base64,{{ plot_url }}"
-        alt="Rating Distribution"
-      />
-      <p>{{ result }}</p>
-      {% endif %}
+        {% if not result %}
+        <!-- About Section (only show before user searches) -->
+        <div class="about-section animate__animated animate__fadeInDown">
+          <div class="about-title">
+            <i class="bi bi-stars"></i> About BuyWise
+          </div>
+          <p class="mb-3" style="font-size:1.13rem;">
+            <span class="about-highlight">BuyWise</span> uses advanced <span class="about-highlight">AI-powered sentiment analysis</span> to help you make smarter shopping decisions. Instantly see the mood of real customer reviews, visualize product ratings, and get a clear recommendation before you buy!
+          </p>
+          <ul class="about-features">
+            <li><i class="bi bi-emoji-smile"></i> <span class="about-highlight">Sentiment Analysis:</span> Understand if reviews are positive, negative, or neutral using AI.</li>
+            <li><i class="bi bi-bar-chart-line"></i> <span class="about-highlight">Live Rating Charts:</span> Interactive bar charts show rating and sentiment trends.</li>
+            <li><i class="bi bi-person-check"></i> <span class="about-highlight">Verified Reviews:</span> Only verified purchases are analyzed for accuracy.</li>
+            <li><i class="bi bi-lightbulb"></i> <span class="about-highlight">Smart Recommendation:</span> Instantly know if a product is a <span style="color:#22c55e;">Buy</span> or <span style="color:#ef4444;">Don't Buy</span>.</li>
+            <li><i class="bi bi-chat-dots"></i> <span class="about-highlight">Your Voice Counts:</span> Add your own review and see its impact live!</li>
+          </ul>
+        </div>
+        {% endif %}
+
+        {% if result %}
+        <div class="result-section mt-5 animate__animated animate__fadeInUp">
+          <h2 class="text-center mb-3">Analysis for <span class="text-primary">{{ product_name }}</span></h2>
+          <div class="d-flex justify-content-center mb-3">
+            <img
+              src="data:image/png;base64,{{ plot_url }}"
+              alt="Rating Distribution"
+              class="img-fluid rounded shadow"
+              style="max-width: 700px; min-width: 400px; width: 90%; height: auto;"
+            />
+          </div>
+          <p class="lead text-center">{{ result }}</p>
+          <div class="text-center">
+            <span class="badge bg-primary fs-6 me-2">Avg Rating: {{ avg_rating }}</span>
+            <span class="badge bg-info fs-6 me-2">Avg Sentiment: {{ avg_sentiment }}</span>
+            <span class="badge bg-warning fs-6">Recommendation: {{ recommendation }}</span>
+          </div>
+        </div>
+
+        <!-- Customer Reviews Section (with sentiment analysis and storage) -->
+        <div class="customer-reviews-section mt-5">
+          <div class="card shadow-lg border-0 animate__animated animate__fadeInUp" style="border-radius: 1rem;">
+            <div class="card-body p-4">
+              <h3 class="text-center mb-4 animate__animated animate__fadeIn">
+                <i class="bi bi-people-fill text-primary"></i>
+                Customer Reviews & Sentiment
+              </h3>
+              <form id="customer-review-form" class="animate__animated animate__fadeInUp mb-4">
+                <input type="hidden" name="product_name" value="{{ product_name }}">
+                <div class="mb-3">
+                  <input
+                    type="text"
+                    class="form-control form-control-lg rounded-4 shadow-sm mb-2"
+                    name="customer_name"
+                    id="customer_name"
+                    placeholder="Your Name"
+                    required
+                    style="background: #f8fafc;"
+                  />
+                  <textarea
+                    class="form-control form-control-lg rounded-4 shadow-sm"
+                    name="customer_review"
+                    id="customer_review"
+                    rows="3"
+                    placeholder="Share your experience with this product..."
+                    required
+                    style="resize: none; background: #f8fafc;"
+                  ></textarea>
+                </div>
+                <div class="d-flex justify-content-center">
+                  <button type="submit"
+                    class="btn btn-primary btn-lg px-5 py-2 rounded-pill shadow animate__animated animate__pulse animate__infinite"
+                    style="font-weight:600; letter-spacing:1px;">
+                    <i class="bi bi-send-fill me-2"></i>
+                    Submit Review
+                  </button>
+                </div>
+              </form>
+              <div id="customer-reviews-list">
+                <!-- Reviews will be rendered here -->
+              </div>
+            </div>
+          </div>
+        </div>
+        {% endif %}
+      </div>
     </div>
   </body>
 </html>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+  // AJAX for user review form
+  const reviewForm = document.getElementById('user-review-form');
+  if (reviewForm) {
+    reviewForm.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const formData = new FormData(reviewForm);
+      const response = await fetch('/submit_review', {
+        method: 'POST',
+        body: formData
+      });
+      if (response.ok) {
+        const data = await response.json();
+        // Update user review result
+        document.getElementById('user-review-result').innerHTML = `
+          <div class="mt-4 text-center animate__animated animate__fadeInUp">
+            <h5 class="mb-3">Your Review Sentiment</h5>
+            <p>
+              <span class="fw-bold">Score:</span>
+              <span class="badge bg-info fs-5">${data.user_sentiment_score}</span>
+            </p>
+            <p>
+              <span class="fw-bold">Category:</span>
+              ${
+                data.user_sentiment_category === 'positive'
+                  ? '<span class="badge bg-success fs-5"><i class="bi bi-hand-thumbs-up-fill"></i> Positive</span>'
+                  : data.user_sentiment_category === 'negative'
+                  ? '<span class="badge bg-danger fs-5"><i class="bi bi-hand-thumbs-down-fill"></i> Negative</span>'
+                  : '<span class="badge bg-secondary fs-5"><i class="bi bi-emoji-neutral-fill"></i> Neutral</span>'
+              }
+            </p>
+          </div>
+        `;
+        // Optionally update the main result section and chart
+        if (data.result && data.plot_url && data.avg_rating && data.avg_sentiment && data.recommendation) {
+          document.querySelector('.result-section .lead').textContent = data.result;
+          document.querySelector('.result-section .badge.bg-primary').textContent = `Avg Rating: ${data.avg_rating}`;
+          document.querySelector('.result-section .badge.bg-info').textContent = `Avg Sentiment: ${data.avg_sentiment}`;
+          document.querySelector('.result-section .badge.bg-warning').textContent = `Recommendation: ${data.recommendation}`;
+          document.querySelector('.result-section img').src = `data:image/png;base64,${data.plot_url}`;
+        }
+      }
+    });
+  }
+
+  // Customer Reviews with Sentiment Storage
+  let customerReviews = JSON.parse(localStorage.getItem('customerReviews') || '{}');
+
+  function renderCustomerReviews(productName) {
+    const reviews = customerReviews[productName] || [];
+    const reviewsList = document.getElementById('customer-reviews-list');
+    if (!reviewsList) return;
+    if (reviews.length === 0) {
+      reviewsList.innerHTML = `<div class="text-center text-muted">No reviews yet. Be the first to review!</div>`;
+      return;
+    }
+    reviewsList.innerHTML = reviews.map(r => `
+      <div class="border rounded-4 p-3 mb-3 bg-light animate__animated animate__fadeIn">
+        <div class="fw-bold mb-1"><i class="bi bi-person-circle"></i> ${r.name}</div>
+        <div class="fst-italic mb-1">${r.text}</div>
+        <div>
+          <span class="badge ${r.sentiment_category === 'positive' ? 'bg-success' : r.sentiment_category === 'negative' ? 'bg-danger' : 'bg-secondary'}">
+            ${r.sentiment_category ? (r.sentiment_category.charAt(0).toUpperCase() + r.sentiment_category.slice(1)) : ''}
+          </span>
+          <span class="badge bg-info ms-2">${r.sentiment_score !== undefined ? 'Score: ' + r.sentiment_score : ''}</span>
+        </div>
+        <div class="text-end text-secondary small">${r.date}</div>
+      </div>
+    `).join('');
+  }
+
+  // On page load, render reviews for current product
+  const productNameInput = document.querySelector('input[name="product_name"]');
+  if (productNameInput) {
+    renderCustomerReviews(productNameInput.value);
+  }
+
+  // Handle customer review form submit with AJAX and update product stats
+  const customerReviewForm = document.getElementById('customer-review-form');
+  if (customerReviewForm) {
+    customerReviewForm.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const productName = customerReviewForm.product_name.value;
+      const name = customerReviewForm.customer_name.value.trim() || "Anonymous";
+      const text = customerReviewForm.customer_review.value.trim();
+      const date = new Date().toLocaleString();
+      if (!text) return;
+
+      // AJAX call to backend for sentiment and product update
+      const formData = new FormData();
+      formData.append('product_name', productName);
+      formData.append('customer_name', name);
+      formData.append('customer_review', text);
+
+      const response = await fetch('/submit_review', {
+        method: 'POST',
+        body: formData
+      });
+      if (response.ok) {
+        const data = await response.json();
+
+        // Store review with sentiment in localStorage
+        if (!customerReviews[productName]) customerReviews[productName] = [];
+        customerReviews[productName].unshift({
+          name: name,
+          text: text,
+          date: date,
+          sentiment_score: data.user_sentiment_score,
+          sentiment_category: data.user_sentiment_category
+        });
+        localStorage.setItem('customerReviews', JSON.stringify(customerReviews));
+        renderCustomerReviews(productName);
+
+        // Update product stats and chart
+        if (data.result && data.plot_url && data.avg_rating && data.avg_sentiment && data.recommendation) {
+          document.querySelector('.result-section .lead').textContent = data.result;
+          document.querySelector('.result-section .badge.bg-primary').textContent = `Avg Rating: ${data.avg_rating}`;
+          document.querySelector('.result-section .badge.bg-info').textContent = `Avg Sentiment: ${data.avg_sentiment}`;
+          document.querySelector('.result-section .badge.bg-warning').textContent = `Recommendation: ${data.recommendation}`;
+          document.querySelector('.result-section img').src = `data:image/png;base64,${data.plot_url}`;
+        }
+        customerReviewForm.reset();
+      }
+    });
+  }
+});
+</script>
