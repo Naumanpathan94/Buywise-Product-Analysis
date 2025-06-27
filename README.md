@@ -87,4 +87,12 @@ Feel free to explore the code and dataset to extend the functionality or adapt i
 
 ---
 
-# (No changes to the README file itself. See below for git instructions.)
+# (No changes needed to the README file for pushing. Use the commands below.)
+
+To push your committed changes to your GitHub repository, run the following commands in your terminal:
+
+```bash
+git add .
+git commit -m "Your commit message"
+git push origin main
+```
