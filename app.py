@@ -137,8 +137,12 @@ def index():
             user_review = request.form.get('user_review', '')
             product_name = request.form.get('product_name', '')
             if user_review and product_name:
-                # Analyze user review
-                blob = TextBlob(user_review)
+                # Translate user review to English for sentiment analysis
+                try:
+                    translated = translator.translate(user_review, dest='en').text
+                except Exception:
+                    translated = user_review  # fallback if translation fails
+                blob = TextBlob(translated)
                 user_sentiment_score = round(blob.sentiment.polarity, 3)
                 if user_sentiment_score > 0.1:
                     user_sentiment_category = 'positive'
@@ -154,23 +158,45 @@ def index():
                 else:
                     user_rating = 3
                 user_reviews_db.setdefault(product_name, []).append({'text': user_review, 'rating': user_rating})
-                # Recalculate product stats
+                # Recalculate product stats (includes user review)
                 plot_url, result, avg_rating, avg_sentiment, recommendation = analyze_product(product_name)
-            return render_template(
-                'index.html',
-                result=result,
-                plot_url=plot_url,
-                product_name=product_name,
-                user_review=user_review,
-                user_sentiment_score=user_sentiment_score,
-                user_sentiment_category=user_sentiment_category,
-                avg_rating=avg_rating,
-                avg_sentiment=avg_sentiment,
-                recommendation=recommendation,
-            )
+                # Ensure user sentiment is always passed to template after review submission
+                return render_template(
+                    'index.html',
+                    result=result,
+                    plot_url=plot_url,
+                    product_name=product_name,
+                    user_review=user_review,
+                    user_sentiment_score=user_sentiment_score,
+                    user_sentiment_category=user_sentiment_category,
+                    avg_rating=avg_rating,
+                    avg_sentiment=avg_sentiment,
+                    recommendation=recommendation,
+                )
         product_name = request.form.get('product_name', '')
         if product_name:
             plot_url, result, avg_rating, avg_sentiment, recommendation = analyze_product(product_name)
+            # Show the latest user review sentiment if available
+            user_reviews = user_reviews_db.get(product_name, [])
+            if user_reviews:
+                last_user_review = user_reviews[-1]['text']
+                try:
+                    translated = translator.translate(last_user_review, dest='en').text
+                except Exception:
+                    translated = last_user_review
+                blob = TextBlob(translated)
+                user_sentiment_score = round(blob.sentiment.polarity, 3)
+                if user_sentiment_score > 0.1:
+                    user_sentiment_category = 'positive'
+                elif user_sentiment_score < -0.1:
+                    user_sentiment_category = 'negative'
+                else:
+                    user_sentiment_category = 'neutral'
+                user_review = last_user_review
+            else:
+                user_review = None
+                user_sentiment_score = None
+                user_sentiment_category = None
         return render_template(
             'index.html',
             result=result,
@@ -214,7 +240,12 @@ def submit_review():
     result = None
 
     if user_review and product_name:
-        blob = TextBlob(user_review)
+        # Translate user review to English for sentiment analysis
+        try:
+            translated = translator.translate(user_review, dest='en').text
+        except Exception:
+            translated = user_review  # fallback if translation fails
+        blob = TextBlob(translated)
         user_sentiment_score = round(blob.sentiment.polarity, 3)
         if user_sentiment_score > 0.1:
             user_sentiment_category = 'positive'
@@ -230,7 +261,7 @@ def submit_review():
         else:
             user_rating = 3
         user_reviews_db.setdefault(product_name, []).append({'text': user_review, 'rating': user_rating})
-        # Recalculate product stats
+        # Recalculate product stats (includes user review)
         plot_url, result, avg_rating, avg_sentiment, recommendation = analyze_product(product_name)
     return jsonify({
         'user_sentiment_score': user_sentiment_score,
@@ -243,12 +274,5 @@ def submit_review():
     })
 
 if __name__ == '__main__':
-    nltk.download('punkt')
-    app.run(port=8000, debug=True)
-if __name__ == '__main__':
-    nltk.download('punkt')
-    app.run(port=8000, debug=True)
-    nltk.download('punkt')
-    app.run(port=8000, debug=True)
     nltk.download('punkt')
     app.run(port=8000, debug=True)

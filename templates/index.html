@@ -90,6 +90,57 @@
         color: #e5e7eb;
         border: 1px solid #6366f1;
       }
+      /* Enhance the textarea for user review */
+      #customer_review,
+      #customer_review:focus {
+        background: #232336 !important;
+        color: #38bdf8 !important; /* Changed from #fbbf24 to #38bdf8 */
+        border: 2px solid #38bdf8 !important;
+        font-size: 1.15rem;
+        font-family: 'Segoe UI', 'Roboto', sans-serif;
+        box-shadow: 0 2px 12px rgba(99,102,241,0.10);
+        transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+        outline: none;
+        caret-color: #38bdf8; /* Changed from #fbbf24 to #38bdf8 */
+        resize: vertical;
+      }
+      #customer_review:focus {
+        background: #18181b !important;
+        border-color: #6366f1 !important;
+        color: #38bdf8 !important; /* Changed from #fbbf24 to #38bdf8 */
+        box-shadow: 0 0 0 2px #6366f1;
+      }
+      #customer_review::placeholder {
+        color: #a5b4fc !important;
+        opacity: 1;
+        font-style: italic;
+        font-size: 1.08rem;
+      }
+      /* Enhance the "Your Name" text field */
+      #customer_name,
+      #customer_name:focus {
+        background: #232336 !important;
+        color: #38bdf8 !important;
+        border: 2px solid #38bdf8 !important;
+        font-size: 1.08rem;
+        font-family: 'Segoe UI', 'Roboto', sans-serif;
+        box-shadow: 0 2px 12px rgba(96,165,250,0.10);
+        transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+        outline: none;
+        caret-color: #38bdf8;
+      }
+      #customer_name:focus {
+        background: #18181b !important;
+        border-color: #6366f1 !important;
+        color: #38bdf8 !important;
+        box-shadow: 0 0 0 2px #6366f1;
+      }
+      #customer_name::placeholder {
+        color: #a5b4fc !important;
+        opacity: 1;
+        font-style: italic;
+        font-size: 1.05rem;
+      }
       .btn-analyze {
         background: linear-gradient(90deg, #6366f1 0%, #60a5fa 100%);
         color: #fff;
@@ -237,8 +288,8 @@
     <script src="{{ url_for('static', filename='js/legacy-customer-review.js') }}"></script>
   </head>
   <body>
-    <div class="container d-flex justify-content-center align-items-center min-vh-100">
-      <div class="main-card shadow-lg animate__animated animate__fadeIn">
+    <div class="container-fluid min-vh-100 p-0" style="background: none; width: 100vw; min-width: 100vw; overflow-x: hidden;">
+      <div class="main-card shadow-lg animate__animated animate__fadeIn mx-0" style="max-width:100vw; width:100vw; margin:2rem 0; border-radius:0;">
         <h1 class="mb-4 text-center animate__animated animate__fadeInDown">BUYWISE PRODUCT ANALYSIS</h1>
         
         <!-- Product Name Search Box at the Top -->
@@ -285,18 +336,40 @@
           <h2 class="text-center mb-3">Analysis for <span class="text-primary">{{ product_name }}</span></h2>
           <div class="d-flex justify-content-center mb-3">
             <img
+              id="main-bar-chart"
               src="data:image/png;base64,{{ plot_url }}"
               alt="Rating Distribution"
               class="img-fluid rounded shadow"
               style="max-width: 700px; min-width: 400px; width: 90%; height: auto;"
             />
           </div>
-          <p class="lead text-center">{{ result }}</p>
+          <p class="lead text-center" id="main-result-text">{{ result }}</p>
           <div class="text-center">
-            <span class="badge bg-primary fs-6 me-2">Avg Rating: {{ avg_rating }}</span>
-            <span class="badge bg-info fs-6 me-2">Avg Sentiment: {{ avg_sentiment }}</span>
-            <span class="badge bg-warning fs-6">Recommendation: {{ recommendation }}</span>
+            <span class="badge bg-primary fs-6 me-2" id="main-avg-rating">Avg Rating: {{ avg_rating }}</span>
+            <span class="badge bg-info fs-6 me-2" id="main-avg-sentiment">Avg Sentiment: {{ avg_sentiment }}</span>
+            <span class="badge bg-warning fs-6" id="main-recommendation">Recommendation: {{ recommendation }}</span>
           </div>
+        </div>
+
+        <!-- User Review Sentiment Section -->
+        <div id="user-review-result" class="mt-4 text-center animate__animated animate__fadeInUp">
+          {% if user_sentiment_score is not none %}
+          <h5 class="mb-3">Your Review Sentiment</h5>
+          <p>
+            <span class="fw-bold">Score:</span>
+            <span class="badge bg-info fs-5">{{ user_sentiment_score }}</span>
+          </p>
+          <p>
+            <span class="fw-bold">Category:</span>
+            {% if user_sentiment_category == 'positive' %}
+              <span class="badge bg-success fs-5"><i class="bi bi-hand-thumbs-up-fill"></i> Positive</span>
+            {% elif user_sentiment_category == 'negative' %}
+              <span class="badge bg-danger fs-5"><i class="bi bi-hand-thumbs-down-fill"></i> Negative</span>
+            {% else %}
+              <span class="badge bg-secondary fs-5"><i class="bi bi-emoji-neutral-fill"></i> Neutral</span>
+            {% endif %}
+          </p>
+          {% endif %}
         </div>
 
         <!-- Customer Reviews Section (with sentiment analysis and storage) -->
@@ -442,7 +515,7 @@ document.addEventListener("DOMContentLoaded", function() {
       const formData = new FormData();
       formData.append('product_name', productName);
       formData.append('customer_name', name);
-      formData.append('customer_review', text);
+      formData.append('user_review', text); // <-- must match Flask backend key
 
       const response = await fetch('/submit_review', {
         method: 'POST',
@@ -465,12 +538,31 @@ document.addEventListener("DOMContentLoaded", function() {
 
         // Update product stats and chart
         if (data.result && data.plot_url && data.avg_rating && data.avg_sentiment && data.recommendation) {
-          document.querySelector('.result-section .lead').textContent = data.result;
-          document.querySelector('.result-section .badge.bg-primary').textContent = `Avg Rating: ${data.avg_rating}`;
-          document.querySelector('.result-section .badge.bg-info').textContent = `Avg Sentiment: ${data.avg_sentiment}`;
-          document.querySelector('.result-section .badge.bg-warning').textContent = `Recommendation: ${data.recommendation}`;
-          document.querySelector('.result-section img').src = `data:image/png;base64,${data.plot_url}`;
+          document.getElementById('main-result-text').textContent = data.result;
+          document.getElementById('main-avg-rating').textContent = `Avg Rating: ${data.avg_rating}`;
+          document.getElementById('main-avg-sentiment').textContent = `Avg Sentiment: ${data.avg_sentiment}`;
+          document.getElementById('main-recommendation').textContent = `Recommendation: ${data.recommendation}`;
+          document.getElementById('main-bar-chart').src = `data:image/png;base64,${data.plot_url}`;
         }
+
+        // Update user review sentiment section
+        document.getElementById('user-review-result').innerHTML = `
+          <h5 class="mb-3">Your Review Sentiment</h5>
+          <p>
+            <span class="fw-bold">Score:</span>
+            <span class="badge bg-info fs-5">${data.user_sentiment_score}</span>
+          </p>
+          <p>
+            <span class="fw-bold">Category:</span>
+            ${
+              data.user_sentiment_category === 'positive'
+                ? '<span class="badge bg-success fs-5"><i class="bi bi-hand-thumbs-up-fill"></i> Positive</span>'
+                : data.user_sentiment_category === 'negative'
+                ? '<span class="badge bg-danger fs-5"><i class="bi bi-hand-thumbs-down-fill"></i> Negative</span>'
+                : '<span class="badge bg-secondary fs-5"><i class="bi bi-emoji-neutral-fill"></i> Neutral</span>'
+            }
+          </p>
+        `;
         customerReviewForm.reset();
       }
     });
