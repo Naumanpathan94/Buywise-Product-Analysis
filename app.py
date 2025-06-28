@@ -59,7 +59,7 @@ def generate_bar_chart(ratings, sentiments, user_reviews=None):
     if user_reviews and len(user_reviews) > 0:
         ratings = ratings + [r['rating'] for r in user_reviews]
         # For sentiments, we assume user reviews are already included in sentiments list
-    plt.figure(figsize=(20, 18))
+    plt.figure(figsize=(14, 10))  # Set both charts to same size (width x height in inches)
     plt.bar(['1', '2', '3', '4', '5'], [ratings.count(i) for i in range(1, 6)], color='#60a5fa', alpha=0.7, label='Ratings')
     plt.twinx()
     plt.plot(range(1, len(sentiments)+1), sentiments, color='#6366f1', marker='o', linewidth=3, markersize=10, label='Sentiment')
@@ -112,7 +112,7 @@ def generate_sentiment_over_time_chart(product_rows, user_reviews):
     df_time = df_time.sort_values('review_date')
     if df_time.empty or df_time['sentiment'].isnull().all():
         return None
-    plt.figure(figsize=(16, 14.4))  # 80% of (20, 18)
+    plt.figure(figsize=(14, 10))  # Set both charts to same size (width x height in inches)
     plt.plot(df_time['review_date'], df_time['sentiment'], marker='o', color='#38bdf8', linewidth=3, markersize=12, label='Sentiment')
     plt.fill_between(df_time['review_date'], df_time['sentiment'], color='#38bdf8', alpha=0.15)
     plt.title('Sentiment Over Time', fontsize=26, color='#38bdf8')
@@ -169,7 +169,7 @@ def generate_verified_pie_chart(product_rows, user_reviews):
         sizes.append(non_verified_count)
         colors.append('#ef4444')
         explode.append(0.05)
-    plt.figure(figsize=(17.6, 14.4))  # 80% of (22, 18)
+    plt.figure(figsize=(17.6, 18))  # Increased height from 14.4 to 18
     ax = plt.gca()
     ax.set_aspect('auto')
     wedges, texts, autotexts = plt.pie(
@@ -212,6 +212,46 @@ def get_product_reviews_and_ratings(product_name, return_rows=False):
         return reviews_and_ratings, product_rows
     return reviews_and_ratings
 
+def get_top_review(product_name):
+    """
+    Returns a dict with keys: reviewer_name, review_title, review_text, review_rating
+    Considers both dataset and user reviews.
+    """
+    # Get dataset reviews for the product
+    product_rows = df[df['product_name'] == product_name]
+    # Defensive: ensure review_rating is int
+    product_rows = product_rows.copy()
+    if not product_rows.empty:
+        product_rows['review_rating'] = pd.to_numeric(product_rows['review_rating'], errors='coerce').fillna(0).astype(int)
+    # Find top dataset review
+    top_dataset_review = None
+    if not product_rows.empty:
+        top_row = product_rows.sort_values('review_rating', ascending=False).iloc[0]
+        top_dataset_review = {
+            'reviewer_name': top_row.get('reviewer_name', 'Anonymous'),
+            'review_title': top_row.get('review_title', ''),
+            'review_text': top_row.get('review_text', ''),
+            'review_rating': int(top_row.get('review_rating', 0)),
+            'is_user': False
+        }
+    # Check user reviews
+    user_reviews = user_reviews_db.get(product_name, [])
+    top_user_review = None
+    if user_reviews:
+        # User reviews: {'text', 'rating', 'title'}
+        top_user = max(user_reviews, key=lambda r: r.get('rating', 0))
+        top_user_review = {
+            'reviewer_name': 'You',
+            'review_title': top_user.get('title', ''),
+            'review_text': top_user.get('text', ''),
+            'review_rating': top_user.get('rating', 0),
+            'is_user': True
+        }
+    # Compare and return the highest
+    if top_user_review and (not top_dataset_review or top_user_review['review_rating'] >= top_dataset_review['review_rating']):
+        return top_user_review
+    return top_dataset_review
+
 def analyze_product(product_name):
     # Get original reviews and ratings and product_rows
     reviews_and_ratings, product_rows = get_product_reviews_and_ratings(product_name, return_rows=True)
@@ -234,12 +274,15 @@ def analyze_product(product_name):
     else:
         recommendation = "Don't Buy"
 
+    # Get top review (dataset + user)
+    top_review = get_top_review(product_name)
+
     # Pass user_reviews to all chart functions for real-time analytics
     plot_url = generate_bar_chart(ratings, sentiments, user_reviews=user_reviews)
     sentiment_time_url = generate_sentiment_over_time_chart(product_rows, user_reviews)
-    verified_pie_url = generate_verified_pie_chart(product_rows, user_reviews)
+    # Remove verified_pie_url
     result = f"Average Rating: {avg_rating} | Average Sentiment: {avg_sentiment} | Recommendation: {recommendation}"
-    return plot_url, result, avg_rating, avg_sentiment, recommendation, sentiment_time_url, verified_pie_url
+    return plot_url, result, avg_rating, avg_sentiment, recommendation, sentiment_time_url, top_review
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
@@ -253,11 +296,12 @@ def index():
     avg_sentiment = None
     recommendation = None
     sentiment_time_url = None
-    verified_pie_url = None
+    top_review = None
 
     if request.method == 'POST':
         if request.form.get('submit_review'):
             user_review = request.form.get('user_review', '')
+            user_review_title = request.form.get('user_review_title', '')
             product_name = request.form.get('product_name', '')
             if user_review and product_name:
                 # Translate user review to English for sentiment analysis
@@ -280,9 +324,13 @@ def index():
                     user_rating = 1
                 else:
                     user_rating = 3
-                user_reviews_db.setdefault(product_name, []).append({'text': user_review, 'rating': user_rating})
+                user_reviews_db.setdefault(product_name, []).append({
+                    'text': user_review,
+                    'rating': user_rating,
+                    'title': user_review_title
+                })
                 # Recalculate product stats (includes user review)
-                plot_url, result, avg_rating, avg_sentiment, recommendation, sentiment_time_url, verified_pie_url = analyze_product(product_name)
+                plot_url, result, avg_rating, avg_sentiment, recommendation, sentiment_time_url, top_review = analyze_product(product_name)
                 # Ensure user sentiment is always passed to template after review submission
                 return render_template(
                     'index.html',
@@ -296,11 +344,11 @@ def index():
                     avg_sentiment=avg_sentiment,
                     recommendation=recommendation,
                     sentiment_time_url=sentiment_time_url,
-                    verified_pie_url=verified_pie_url,
+                    top_review=top_review,
                 )
         product_name = request.form.get('product_name', '')
         if product_name:
-            plot_url, result, avg_rating, avg_sentiment, recommendation, sentiment_time_url, verified_pie_url = analyze_product(product_name)
+            plot_url, result, avg_rating, avg_sentiment, recommendation, sentiment_time_url, top_review = analyze_product(product_name)
             # Show the latest user review sentiment if available
             user_reviews = user_reviews_db.get(product_name, [])
             if user_reviews:
@@ -334,7 +382,7 @@ def index():
             avg_sentiment=avg_sentiment,
             recommendation=recommendation,
             sentiment_time_url=sentiment_time_url,
-            verified_pie_url=verified_pie_url,
+            top_review=top_review,
         )
     return render_template(
         'index.html',
@@ -348,7 +396,7 @@ def index():
         avg_sentiment=avg_sentiment,
         recommendation=recommendation,
         sentiment_time_url=sentiment_time_url,
-        verified_pie_url=verified_pie_url,
+        top_review=top_review,
     )
 
 @app.route('/product_names')
@@ -358,7 +406,8 @@ def product_names():
 
 @app.route('/submit_review', methods=['POST'])
 def submit_review():
-    user_review = request.form.get('user_review', '')
+    user_review = request.form.get('customer_review', '')  # <-- changed from 'user_review'
+    user_review_title = request.form.get('user_review_title', '')
     product_name = request.form.get('product_name', '')
     user_sentiment_score = None
     user_sentiment_category = None
@@ -368,7 +417,7 @@ def submit_review():
     plot_url = None
     result = None
     sentiment_time_url = None
-    verified_pie_url = None
+    top_review = None
 
     if user_review and product_name:
         # Translate user review to English for sentiment analysis
@@ -391,9 +440,13 @@ def submit_review():
             user_rating = 1
         else:
             user_rating = 3
-        user_reviews_db.setdefault(product_name, []).append({'text': user_review, 'rating': user_rating})
+        user_reviews_db.setdefault(product_name, []).append({
+            'text': user_review,
+            'rating': user_rating,
+            'title': user_review_title
+        })
         # Recalculate product stats (includes user review)
-        plot_url, result, avg_rating, avg_sentiment, recommendation, sentiment_time_url, verified_pie_url = analyze_product(product_name)
+        plot_url, result, avg_rating, avg_sentiment, recommendation, sentiment_time_url, top_review = analyze_product(product_name)
     return jsonify({
         'user_sentiment_score': user_sentiment_score,
         'user_sentiment_category': user_sentiment_category,
@@ -403,9 +456,15 @@ def submit_review():
         'plot_url': plot_url,
         'result': result,
         'sentiment_time_url': sentiment_time_url,
-        'verified_pie_url': verified_pie_url,
+        'top_review': top_review,
     })
 
+if __name__ == '__main__':
+    nltk.download('punkt')
+    app.run(port=8000, debug=True)
+if __name__ == '__main__':
+    nltk.download('punkt')
+    app.run(port=8000, debug=True)
 if __name__ == '__main__':
     nltk.download('punkt')
     app.run(port=8000, debug=True)

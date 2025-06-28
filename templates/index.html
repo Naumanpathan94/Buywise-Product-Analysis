@@ -90,6 +90,10 @@
         color: #e5e7eb;
         border: 1px solid #6366f1;
       }
+      #product_name::placeholder {
+        color: #fff !important;
+        opacity: 1;
+      }
       /* Enhance the textarea for user review */
       #customer_review,
       #customer_review:focus {
@@ -219,7 +223,7 @@
       }
       .list-group-item {
         background: #232336;
-        color: #e5e7eb;
+        color: #e7e7eb;
         border: none;
       }
       .list-group-item-action:hover, .list-group-item-action:focus {
@@ -238,6 +242,12 @@
       .bg-light { background-color: #18181b !important; color: #e5e7eb !important; }
       .shadow, .shadow-lg {
         box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.25) !important;
+      }
+      #user_review_title::placeholder {
+        color: #a5b4fc !important;
+        opacity: 1;
+        font-style: italic;
+        font-size: 1.05rem;
       }
     </style>
     <script>
@@ -282,6 +292,98 @@
             suggestions.innerHTML = "";
           }
         });
+
+        // --- User Review AJAX Submission ---
+        const reviewForm = document.getElementById("customer-review-form");
+        if (reviewForm) {
+          reviewForm.addEventListener("submit", async function (e) {
+            e.preventDefault();
+            const formData = new FormData(reviewForm);
+            const response = await fetch("/submit_review", {
+              method: "POST",
+              body: formData,
+            });
+            const data = await response.json();
+
+            // Update sentiment score and category
+            const userReviewResult = document.getElementById("user-review-result");
+            if (userReviewResult) {
+              let html = "";
+              if (data.user_sentiment_score !== null) {
+                html += `<h5 class="mb-3">Your Review Sentiment</h5>
+                  <p>
+                    <span class="fw-bold">Score:</span>
+                    <span class="badge bg-info fs-5">${data.user_sentiment_score}</span>
+                  </p>
+                  <p>
+                    <span class="fw-bold">Category:</span>`;
+                if (data.user_sentiment_category === "positive") {
+                  html += `<span class="badge bg-success fs-5"><i class="bi bi-hand-thumbs-up-fill"></i> Positive</span>`;
+                } else if (data.user_sentiment_category === "negative") {
+                  html += `<span class="badge bg-danger fs-5"><i class="bi bi-hand-thumbs-down-fill"></i> Negative</span>`;
+                } else {
+                  html += `<span class="badge bg-secondary fs-5"><i class="bi bi-emoji-neutral-fill"></i> Neutral</span>`;
+                }
+                html += `</p>`;
+              }
+              userReviewResult.innerHTML = html;
+            }
+
+            // Update main charts and stats
+            if (data.plot_url) {
+              document.getElementById("main-bar-chart").src = "data:image/png;base64," + data.plot_url;
+            }
+            if (data.sentiment_time_url) {
+              const sentimentImg = document.querySelector('img[alt="Sentiment Over Time"]');
+              if (sentimentImg) {
+                sentimentImg.src = "data:image/png;base64," + data.sentiment_time_url;
+              }
+            }
+            if (data.result) {
+              document.getElementById("main-result-text").textContent = data.result;
+            }
+            if (data.avg_rating !== null) {
+              document.getElementById("main-avg-rating").textContent = "Avg Rating: " + data.avg_rating;
+            }
+            if (data.avg_sentiment !== null) {
+              document.getElementById("main-avg-sentiment").textContent = "Avg Sentiment: " + data.avg_sentiment;
+            }
+            if (data.recommendation) {
+              document.getElementById("main-recommendation").textContent = "Recommendation: " + data.recommendation;
+            }
+            // Update top review card if present
+            if (data.top_review) {
+              const topReviewCard = document.getElementById("top-review-card");
+              if (topReviewCard) {
+                let topHtml = `
+                <div class="card shadow-lg border-0" style="border-radius:1.5rem;background:linear-gradient(90deg,#232336 60%,#3730a3 100%);">
+                  <div class="card-body p-4">
+                    <div class="d-flex align-items-center mb-2">
+                      <i class="bi bi-trophy-fill text-warning fs-2 me-2"></i>
+                      <h4 class="mb-0" style="color:#fbbf24;font-weight:700;letter-spacing:1px;">Top Review</h4>
+                      ${data.top_review.is_user ? '<span class="badge bg-info ms-3">Your Review</span>' : ''}
+                    </div>
+                    <div class="mb-2">
+                      <span class="fw-bold" style="color:#60a5fa;"><i class="bi bi-person-circle"></i> ${data.top_review.reviewer_name}</span>
+                      ${data.top_review.review_title ? `<span class="ms-2 fst-italic" style="color:#a5b4fc;">${data.top_review.review_title}</span>` : ""}
+                    </div>
+                    <div class="mb-2" style="font-size:1.13rem;color:#e0e7ef;">
+                      <i class="bi bi-chat-quote-fill text-primary"></i>
+                      ${data.top_review.review_text}
+                    </div>
+                    <div>
+                      <span class="badge bg-primary fs-6"><i class="bi bi-star-fill"></i> Rating: ${data.top_review.review_rating}</span>
+                    </div>
+                  </div>
+                </div>
+                `;
+                topReviewCard.innerHTML = topHtml;
+              }
+            }
+            // Optionally reset the form
+            reviewForm.reset();
+          });
+        }
       });
     </script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
@@ -307,56 +409,152 @@
             />
             <div id="suggestions" class="list-group"></div>
           </div>
-          <div class="d-flex justify-content-center">
+          <div class="d-flex justify-content-center mb-5">
             <button type="submit" class="btn btn-analyze btn-lg shadow animate__animated animate__pulse animate__infinite">Analyze</button>
           </div>
         </form>
 
         {% if not result %}
         <!-- About Section (only show before user searches) -->
-        <div class="about-section animate__animated animate__fadeInDown">
-          <div class="about-title">
-            <i class="bi bi-stars"></i> About BuyWise
+        <div class="about-section animate__animated animate__fadeInDown" style="position:relative;overflow:hidden;">
+          <div class="about-title animate__animated animate__fadeInLeft" style="display:flex;align-items:center;">
+            <i class="bi bi-stars me-2 animate__animated animate__tada animate__infinite animate__slower"></i>
+            Welcome to <span class="about-highlight ms-2">BuyWise</span>
           </div>
-          <p class="mb-3" style="font-size:1.13rem;">
-            <span class="about-highlight">BuyWise</span> uses advanced <span class="about-highlight">AI-powered sentiment analysis</span> to help you make smarter shopping decisions. Instantly see the mood of real customer reviews, visualize product ratings, and get a clear recommendation before you buy!
-          </p>
-          <ul class="about-features">
-            <li><i class="bi bi-emoji-smile"></i> <span class="about-highlight">Sentiment Analysis:</span> Understand if reviews are positive, negative, or neutral using AI.</li>
-            <li><i class="bi bi-bar-chart-line"></i> <span class="about-highlight">Live Rating Charts:</span> Interactive bar charts show rating and sentiment trends.</li>
-            <li><i class="bi bi-person-check"></i> <span class="about-highlight">Verified Reviews:</span> Only verified purchases are analyzed for accuracy.</li>
-            <li><i class="bi bi-lightbulb"></i> <span class="about-highlight">Smart Recommendation:</span> Instantly know if a product is a <span style="color:#22c55e;">Buy</span> or <span style="color:#ef4444;">Don't Buy</span>.</li>
-            <li><i class="bi bi-chat-dots"></i> <span class="about-highlight">Your Voice Counts:</span> Add your own review and see its impact live!</li>
-          </ul>
+          <div class="row align-items-center">
+            <div class="col-md-7">
+              <p class="mb-3 animate__animated animate__fadeInUp" style="font-size:1.18rem;">
+                <span class="about-highlight">BuyWise</span> is your AI-powered shopping assistant that helps you make smarter purchase decisions by analyzing real customer reviews from across the globe.
+                <br><br>
+                <span style="color:#60a5fa;font-weight:600;">What can you do here?</span>
+              </p>
+              <ul class="about-features animate__animated animate__fadeInLeft" style="padding-left:0;">
+                <li style="display:flex;align-items:flex-start;margin-bottom:1.1rem;">
+                  <i class="bi bi-search-heart-fill animate__animated animate__bounceIn" style="margin-top:2px;"></i>
+                  <div>
+                    <span class="about-highlight">Search Products Instantly:</span>
+                    <span style="color:#e5e7eb;"> Start typing a product name and get smart suggestions in real time.</span>
+                  </div>
+                </li>
+                <li style="display:flex;align-items:flex-start;margin-bottom:1.1rem;">
+                  <i class="bi bi-bar-chart-fill animate__animated animate__fadeInUp" style="margin-top:2px;"></i>
+                  <div>
+                    <span class="about-highlight">Visualize Ratings &amp; Sentiments:</span>
+                    <span style="color:#e5e7eb;"> Interactive charts show you the distribution of ratings and how customer sentiment changes over time.</span>
+                  </div>
+                </li>
+                <li style="display:flex;align-items:flex-start;margin-bottom:1.1rem;">
+                  <i class="bi bi-emoji-smile-fill animate__animated animate__pulse animate__infinite animate__slower" style="margin-top:2px;"></i>
+                  <div>
+                    <span class="about-highlight">AI Sentiment Analysis:</span>
+                    <span style="color:#e5e7eb;"> We analyze reviews in any language and translate them to give you a clear positive, negative, or neutral score.</span>
+                  </div>
+                </li>
+                <li style="display:flex;align-items:flex-start;margin-bottom:1.1rem;">
+                  <i class="bi bi-check-circle-fill animate__animated animate__fadeIn" style="margin-top:2px;"></i>
+                  <div>
+                    <span class="about-highlight">Verified Reviews Only:</span>
+                    <span style="color:#e5e7eb;"> Only feedback from verified purchases is considered for accuracy and trust.</span>
+                  </div>
+                </li>
+                <li style="display:flex;align-items:flex-start;margin-bottom:1.1rem;">
+                  <i class="bi bi-lightbulb-fill animate__animated animate__flash animate__infinite animate__slower" style="margin-top:2px;"></i>
+                  <div>
+                    <span class="about-highlight">Smart Recommendations:</span>
+                    <span style="color:#e5e7eb;"> Instantly see if a product is a <span style="color:#22c55e;">Buy</span> or <span style="color:#ef4444;">Don't Buy</span> based on real data.</span>
+                  </div>
+                </li>
+                <li style="display:flex;align-items:flex-start;">
+                  <i class="bi bi-chat-dots-fill animate__animated animate__fadeInUp" style="margin-top:2px;"></i>
+                  <div>
+                    <span class="about-highlight">Add Your Own Review:</span>
+                    <span style="color:#e5e7eb;"> Share your experience and see its impact on the analysis live!</span>
+                  </div>
+                </li>
+              </ul>
+            </div>
+            <div class="col-md-5 d-flex justify-content-center align-items-center">
+              <div class="animate__animated animate__zoomIn" style="background:rgba(99,102,241,0.08);border-radius:1.2rem;padding:1.5rem;box-shadow:0 4px 24px rgba(99,102,241,0.10);">
+                <img src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png" alt="AI Assistant" style="width:110px;height:110px;display:block;margin:0 auto 1rem auto;animation: floatY 2.5s ease-in-out infinite alternate;">
+                <div class="text-center" style="font-size:1.08rem;color:#a5b4fc;font-weight:600;">
+                  <span class="animate__animated animate__fadeInDown">AI Review Analyzer</span>
+                  <br>
+                  <span class="animate__animated animate__fadeInUp animate__delay-1s" style="color:#38bdf8;">Your smart shopping guide</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <style>
+            @keyframes floatY {
+              0% { transform: translateY(0);}
+              100% { transform: translateY(-18px);}
+            }
+            .about-features li > div {
+              margin-left: 0.7rem;
+              line-height: 1.5;
+            }
+            .about-features li i {
+              min-width: 1.6rem;
+              font-size: 1.3rem;
+              margin-top: 2px;
+            }
+          </style>
         </div>
         {% endif %}
 
         {% if result %}
-        <div class="result-section mt-5 animate__animated animate__fadeInUp">
-          <h2 class="text-center mb-3">Analysis for <span class="text-primary">{{ product_name }}</span></h2>
-          <div class="d-flex justify-content-center mb-3">
-            <img
-              id="main-bar-chart"
-              src="data:image/png;base64,{{ plot_url }}"
-              alt="Rating Distribution"
-              class="img-fluid rounded shadow"
-              style="max-width: 700px; min-width: 400px; width: 90%; height: auto;"
-            />
-          </div>
-          <!-- Dashboard Rectangle: Sentiment Over Time & Verified Pie -->
-          <div class="dashboard-row d-flex flex-wrap justify-content-center align-items-stretch gap-4 mb-4" style="width:100%;max-width:900px;margin:0 auto;">
-            <div class="dashboard-card bg-dark rounded-4 shadow p-3 flex-fill" style="min-width:320px;max-width:440px;">
-              <h6 class="text-center mb-2" style="color:#38bdf8;"><i class="bi bi-graph-up"></i> Sentiment Over Time</h6>
-              {% if sentiment_time_url %}
-              <img src="data:image/png;base64,{{ sentiment_time_url }}" alt="Sentiment Over Time" class="img-fluid rounded" style="width:100%;height:auto;"/>
-              {% else %}
-              <div class="text-muted text-center">Not enough data</div>
-              {% endif %}
+        <!-- Top Review Card -->
+        {% if top_review %}
+        <div id="top-review-card" class="animate__animated animate__fadeInDown animate__faster mb-4" style="max-width:700px;margin:0 auto; margin-top:0;">
+          <div class="card shadow-lg border-0" style="border-radius:1.5rem;background:linear-gradient(90deg,#232336 60%,#3730a3 100%);">
+            <div class="card-body p-4">
+              <div class="d-flex align-items-center mb-2">
+                <i class="bi bi-trophy-fill text-warning fs-2 me-2"></i>
+                <h4 class="mb-0" style="color:#fbbf24;font-weight:700;letter-spacing:1px;">Top Review</h4>
+                {% if top_review.is_user %}
+                  <span class="badge bg-info ms-3">Your Review</span>
+                {% endif %}
+              </div>
+              <div class="mb-2">
+                <span class="fw-bold" style="color:#60a5fa;"><i class="bi bi-person-circle"></i> {{ top_review.reviewer_name }}</span>
+                {% if top_review.review_title %}
+                  <span class="ms-2 fst-italic" style="color:#a5b4fc;">{{ top_review.review_title }}</span>
+                {% endif %}
+              </div>
+              <div class="mb-2" style="font-size:1.13rem;color:#e0e7ef;">
+                <i class="bi bi-chat-quote-fill text-primary"></i>
+                {{ top_review.review_text }}
+              </div>
+              <div>
+                <span class="badge bg-primary fs-6"><i class="bi bi-star-fill"></i> Rating: {{ top_review.review_rating }}</span>
+              </div>
             </div>
-            <div class="dashboard-card bg-dark rounded-4 shadow p-3 flex-fill" style="min-width:220px;max-width:320px;">
-              <h6 class="text-center mb-2" style="color:#22c55e;"><i class="bi bi-pie-chart-fill"></i> Verified Purchase Ratio</h6>
-              {% if verified_pie_url %}
-              <img src="data:image/png;base64,{{ verified_pie_url }}" alt="Verified Purchase Pie" class="img-fluid rounded" style="width:100%;height:auto;"/>
+          </div>
+        </div>
+        {% endif %}
+        <div class="result-section mt-5 animate__animated animate__fadeInUp animate__faster">
+          <h2 class="text-center mb-3">Analysis for <span class="text-primary">{{ product_name }}</span></h2>
+          <div class="row justify-content-center align-items-start gx-4" style="width:100vw;max-width:100vw;margin-left:0;margin-right:0;">
+            <div class="col-12 col-lg-6 d-flex flex-column align-items-center mb-3 mb-lg-0" style="padding-left:0;padding-right:12px;">
+              <img
+                id="main-bar-chart"
+                src="data:image/png;base64,{{ plot_url }}"
+                alt="Rating Distribution"
+                class="img-fluid rounded shadow animate__animated animate__zoomIn animate__faster"
+                style="max-width: 700px; min-width: 400px; width: 100%; height: 500px; object-fit: contain;"
+              />
+              <div class="text-center mt-2" style="font-weight:600;color:#60a5fa;font-size:1.1rem;">
+                Rating Distribution & Sentiment Trend
+              </div>
+            </div>
+            <div class="col-12 col-lg-6 d-flex flex-column align-items-center" style="padding-left:12px;padding-right:0;">
+              {% if sentiment_time_url %}
+              <div style="width:100%;display:flex;justify-content:flex-start;">
+                <img src="data:image/png;base64,{{ sentiment_time_url }}" alt="Sentiment Over Time" class="img-fluid rounded shadow animate__animated animate__zoomIn animate__faster" style="max-width: 700px; min-width: 400px; width: 100%; height: 500px; object-fit: contain; margin-left:-20px;" />
+              </div>
+              <div class="text-center mt-2" style="font-weight:600;color:#38bdf8;font-size:1.1rem;">
+                <i class="bi bi-graph-up"></i> Sentiment Over Time
+              </div>
               {% else %}
               <div class="text-muted text-center">Not enough data</div>
               {% endif %}
@@ -409,7 +607,16 @@
                     id="customer_name"
                     placeholder="Your Name"
                     required
-                    style="background: #f8fafc;"
+                    style="background: #232336 !important; color: #38bdf8 !important; border: 2px solid #38bdf8 !important; font-size: 1.08rem; font-family: 'Segoe UI', 'Roboto', sans-serif; box-shadow: 0 2px 12px rgba(96,165,250,0.10); transition: border-color 0.2s, box-shadow 0.2s, background 0.2s; outline: none; caret-color: #38bdf8;"
+                  />
+                  <input
+                    type="text"
+                    class="form-control form-control-lg rounded-4 shadow-sm mb-2"
+                    name="user_review_title"
+                    id="user_review_title"
+                    placeholder="Review Title"
+                    required
+                    style="background: #232336 !important; color: #38bdf8 !important; border: 2px solid #38bdf8 !important; font-size: 1.08rem; font-family: 'Segoe UI', 'Roboto', sans-serif; box-shadow: 0 2px 12px rgba(96,165,250,0.10); transition: border-color 0.2s, box-shadow 0.2s, background 0.2s; outline: none; caret-color: #38bdf8;"
                   />
                   <textarea
                     class="form-control form-control-lg rounded-4 shadow-sm"
@@ -441,150 +648,3 @@
     </div>
   </body>
 </html>
-<script>
-document.addEventListener("DOMContentLoaded", function() {
-  // AJAX for user review form
-  const reviewForm = document.getElementById('user-review-form');
-  if (reviewForm) {
-    reviewForm.addEventListener('submit', async function(e) {
-      e.preventDefault();
-      const formData = new FormData(reviewForm);
-      const response = await fetch('/submit_review', {
-        method: 'POST',
-        body: formData
-      });
-      if (response.ok) {
-        const data = await response.json();
-        // Update user review result
-        document.getElementById('user-review-result').innerHTML = `
-          <div class="mt-4 text-center animate__animated animate__fadeInUp">
-            <h5 class="mb-3">Your Review Sentiment</h5>
-            <p>
-              <span class="fw-bold">Score:</span>
-              <span class="badge bg-info fs-5">${data.user_sentiment_score}</span>
-            </p>
-            <p>
-              <span class="fw-bold">Category:</span>
-              ${
-                data.user_sentiment_category === 'positive'
-                  ? '<span class="badge bg-success fs-5"><i class="bi bi-hand-thumbs-up-fill"></i> Positive</span>'
-                  : data.user_sentiment_category === 'negative'
-                  ? '<span class="badge bg-danger fs-5"><i class="bi bi-hand-thumbs-down-fill"></i> Negative</span>'
-                  : '<span class="badge bg-secondary fs-5"><i class="bi bi-emoji-neutral-fill"></i> Neutral</span>'
-              }
-            </p>
-          </div>
-        `;
-        // Optionally update the main result section and chart
-        if (data.result && data.plot_url && data.avg_rating && data.avg_sentiment && data.recommendation) {
-          document.querySelector('.result-section .lead').textContent = data.result;
-          document.querySelector('.result-section .badge.bg-primary').textContent = `Avg Rating: ${data.avg_rating}`;
-          document.querySelector('.result-section .badge.bg-info').textContent = `Avg Sentiment: ${data.avg_sentiment}`;
-          document.querySelector('.result-section .badge.bg-warning').textContent = `Recommendation: ${data.recommendation}`;
-          document.querySelector('.result-section img').src = `data:image/png;base64,${data.plot_url}`;
-        }
-      }
-    });
-  }
-
-  // Customer Reviews with Sentiment Storage
-  let customerReviews = JSON.parse(localStorage.getItem('customerReviews') || '{}');
-
-  function renderCustomerReviews(productName) {
-    const reviews = customerReviews[productName] || [];
-    const reviewsList = document.getElementById('customer-reviews-list');
-    if (!reviewsList) return;
-    if (reviews.length === 0) {
-      reviewsList.innerHTML = `<div class="text-center text-muted">No reviews yet. Be the first to review!</div>`;
-      return;
-    }
-    reviewsList.innerHTML = reviews.map(r => `
-      <div class="border rounded-4 p-3 mb-3 bg-light animate__animated animate__fadeIn">
-        <div class="fw-bold mb-1"><i class="bi bi-person-circle"></i> ${r.name}</div>
-        <div class="fst-italic mb-1">${r.text}</div>
-        <div>
-          <span class="badge ${r.sentiment_category === 'positive' ? 'bg-success' : r.sentiment_category === 'negative' ? 'bg-danger' : 'bg-secondary'}">
-            ${r.sentiment_category ? (r.sentiment_category.charAt(0).toUpperCase() + r.sentiment_category.slice(1)) : ''}
-          </span>
-          <span class="badge bg-info ms-2">${r.sentiment_score !== undefined ? 'Score: ' + r.sentiment_score : ''}</span>
-        </div>
-        <div class="text-end text-secondary small">${r.date}</div>
-      </div>
-    `).join('');
-  }
-
-  // On page load, render reviews for current product
-  const productNameInput = document.querySelector('input[name="product_name"]');
-  if (productNameInput) {
-    renderCustomerReviews(productNameInput.value);
-  }
-
-  // Handle customer review form submit with AJAX and update product stats
-  const customerReviewForm = document.getElementById('customer-review-form');
-  if (customerReviewForm) {
-    customerReviewForm.addEventListener('submit', async function(e) {
-      e.preventDefault();
-      const productName = customerReviewForm.product_name.value;
-      const name = customerReviewForm.customer_name.value.trim() || "Anonymous";
-      const text = customerReviewForm.customer_review.value.trim();
-      const date = new Date().toLocaleString();
-      if (!text) return;
-
-      // AJAX call to backend for sentiment and product update
-      const formData = new FormData();
-      formData.append('product_name', productName);
-      formData.append('customer_name', name);
-      formData.append('user_review', text); // <-- must match Flask backend key
-
-      const response = await fetch('/submit_review', {
-        method: 'POST',
-        body: formData
-      });
-      if (response.ok) {
-        const data = await response.json();
-
-        // Store review with sentiment in localStorage
-        if (!customerReviews[productName]) customerReviews[productName] = [];
-        customerReviews[productName].unshift({
-          name: name,
-          text: text,
-          date: date,
-          sentiment_score: data.user_sentiment_score,
-          sentiment_category: data.user_sentiment_category
-        });
-        localStorage.setItem('customerReviews', JSON.stringify(customerReviews));
-        renderCustomerReviews(productName);
-
-        // Update product stats and chart
-        if (data.result && data.plot_url && data.avg_rating && data.avg_sentiment && data.recommendation) {
-          document.getElementById('main-result-text').textContent = data.result;
-          document.getElementById('main-avg-rating').textContent = `Avg Rating: ${data.avg_rating}`;
-          document.getElementById('main-avg-sentiment').textContent = `Avg Sentiment: ${data.avg_sentiment}`;
-          document.getElementById('main-recommendation').textContent = `Recommendation: ${data.recommendation}`;
-          document.getElementById('main-bar-chart').src = `data:image/png;base64,${data.plot_url}`;
-        }
-
-        // Update user review sentiment section
-        document.getElementById('user-review-result').innerHTML = `
-          <h5 class="mb-3">Your Review Sentiment</h5>
-          <p>
-            <span class="fw-bold">Score:</span>
-            <span class="badge bg-info fs-5">${data.user_sentiment_score}</span>
-          </p>
-          <p>
-            <span class="fw-bold">Category:</span>
-            ${
-              data.user_sentiment_category === 'positive'
-                ? '<span class="badge bg-success fs-5"><i class="bi bi-hand-thumbs-up-fill"></i> Positive</span>'
-                : data.user_sentiment_category === 'negative'
-                ? '<span class="badge bg-danger fs-5"><i class="bi bi-hand-thumbs-down-fill"></i> Negative</span>'
-                : '<span class="badge bg-secondary fs-5"><i class="bi bi-emoji-neutral-fill"></i> Neutral</span>'
-            }
-          </p>
-        `;
-        customerReviewForm.reset();
-      }
-    });
-  }
-});
-</script>
