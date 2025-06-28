@@ -343,6 +343,25 @@
               style="max-width: 700px; min-width: 400px; width: 90%; height: auto;"
             />
           </div>
+          <!-- Dashboard Rectangle: Sentiment Over Time & Verified Pie -->
+          <div class="dashboard-row d-flex flex-wrap justify-content-center align-items-stretch gap-4 mb-4" style="width:100%;max-width:900px;margin:0 auto;">
+            <div class="dashboard-card bg-dark rounded-4 shadow p-3 flex-fill" style="min-width:320px;max-width:440px;">
+              <h6 class="text-center mb-2" style="color:#38bdf8;"><i class="bi bi-graph-up"></i> Sentiment Over Time</h6>
+              {% if sentiment_time_url %}
+              <img src="data:image/png;base64,{{ sentiment_time_url }}" alt="Sentiment Over Time" class="img-fluid rounded" style="width:100%;height:auto;"/>
+              {% else %}
+              <div class="text-muted text-center">Not enough data</div>
+              {% endif %}
+            </div>
+            <div class="dashboard-card bg-dark rounded-4 shadow p-3 flex-fill" style="min-width:220px;max-width:320px;">
+              <h6 class="text-center mb-2" style="color:#22c55e;"><i class="bi bi-pie-chart-fill"></i> Verified Purchase Ratio</h6>
+              {% if verified_pie_url %}
+              <img src="data:image/png;base64,{{ verified_pie_url }}" alt="Verified Purchase Pie" class="img-fluid rounded" style="width:100%;height:auto;"/>
+              {% else %}
+              <div class="text-muted text-center">Not enough data</div>
+              {% endif %}
+            </div>
+          </div>
           <p class="lead text-center" id="main-result-text">{{ result }}</p>
           <div class="text-center">
             <span class="badge bg-primary fs-6 me-2" id="main-avg-rating">Avg Rating: {{ avg_rating }}</span>

@@ -54,25 +54,141 @@ def analyze_sentiment(review_texts):
     sentiments = [TextBlob(text).sentiment.polarity for text in translated_reviews]
     return sentiments
 
-def generate_bar_chart(ratings, sentiments):
-    plt.figure(figsize=(6, 4))
+def generate_bar_chart(ratings, sentiments, user_reviews=None):
+    # Optionally include user reviews in the bar chart
+    if user_reviews and len(user_reviews) > 0:
+        ratings = ratings + [r['rating'] for r in user_reviews]
+        # For sentiments, we assume user reviews are already included in sentiments list
+    plt.figure(figsize=(20, 18))
     plt.bar(['1', '2', '3', '4', '5'], [ratings.count(i) for i in range(1, 6)], color='#60a5fa', alpha=0.7, label='Ratings')
     plt.twinx()
-    plt.plot(range(1, len(sentiments)+1), sentiments, color='#6366f1', marker='o', label='Sentiment')
-    plt.ylabel('Sentiment Score')
-    plt.title('Rating Distribution & Sentiment Trend')
-    plt.legend(loc='upper left')
+    plt.plot(range(1, len(sentiments)+1), sentiments, color='#6366f1', marker='o', linewidth=3, markersize=10, label='Sentiment')
+    plt.ylabel('Sentiment Score', fontsize=18)
+    plt.title('Rating Distribution & Sentiment Trend', fontsize=22)
+    plt.xticks(fontsize=16)
+    plt.yticks(fontsize=16)
+    plt.legend(loc='upper left', fontsize=14)
+    plt.tight_layout(pad=2)
     buf = io.BytesIO()
-    plt.savefig(buf, format='png', bbox_inches='tight')
+    plt.savefig(buf, format='png', bbox_inches='tight', dpi=180)
     buf.seek(0)
     plot_url = base64.b64encode(buf.getvalue()).decode('utf8')
     plt.close()
     return plot_url
 
-# Print your DataFrame columns to debug the actual column names
-print("CSV Columns:", df.columns.tolist())
+def generate_sentiment_over_time_chart(product_rows, user_reviews):
+    import datetime
+    df_time = product_rows.copy()
+    # Only keep rows with non-empty review_text and review_date
+    if 'review_date' not in df_time.columns or 'review_text' not in df_time.columns:
+        return None
+    # Convert review_date to string to avoid pandas parsing issues with mixed types
+    df_time['review_date'] = df_time['review_date'].astype(str)
+    df_time = df_time[df_time['review_text'].notnull() & df_time['review_date'].notnull()]
+    # Try to parse dates robustly
+    df_time['review_date'] = pd.to_datetime(df_time['review_date'].str.extract(r'(\d{1,2} \w+ \d{4})')[0], errors='coerce')
+    df_time = df_time.dropna(subset=['review_date'])
+    # If user_reviews exist, merge them, else just use dataset
+    if user_reviews and len(user_reviews) > 0:
+        now = datetime.datetime.now()
+        user_df = pd.DataFrame([{
+            'review_text': r['text'],
+            'review_date': now + datetime.timedelta(seconds=i),
+            'verified_purchase': True
+        } for i, r in enumerate(user_reviews)])
+        for col in df_time.columns:
+            if col not in user_df.columns:
+                user_df[col] = None
+        user_df = user_df[df_time.columns]
+        user_df['review_date'] = pd.to_datetime(user_df['review_date'], errors='coerce')
+        df_time = pd.concat([df_time, user_df], ignore_index=True)
+        df_time = df_time.dropna(subset=['review_date', 'review_text'])
+    if df_time.empty:
+        return None
+    review_texts = df_time['review_text'].astype(str).tolist()
+    sentiments = analyze_sentiment(review_texts)
+    df_time = df_time.iloc[:len(sentiments)].copy()
+    df_time['sentiment'] = sentiments
+    df_time = df_time.sort_values('review_date')
+    if df_time.empty or df_time['sentiment'].isnull().all():
+        return None
+    plt.figure(figsize=(16, 14.4))  # 80% of (20, 18)
+    plt.plot(df_time['review_date'], df_time['sentiment'], marker='o', color='#38bdf8', linewidth=3, markersize=12, label='Sentiment')
+    plt.fill_between(df_time['review_date'], df_time['sentiment'], color='#38bdf8', alpha=0.15)
+    plt.title('Sentiment Over Time', fontsize=26, color='#38bdf8')
+    plt.xlabel('Date', fontsize=22)
+    plt.ylabel('Sentiment Score', fontsize=22)
+    plt.xticks(rotation=45, ha='right', fontsize=18)
+    plt.yticks(fontsize=18)
+    plt.grid(True, alpha=0.3, linestyle='--')
+    plt.tight_layout(pad=2)
+    plt.legend(fontsize=16)
+    buf = io.BytesIO()
+    plt.savefig(buf, format='png', bbox_inches='tight', dpi=200)
+    buf.seek(0)
+    plot_url = base64.b64encode(buf.getvalue()).decode('utf8')
+    plt.close()
+    return plot_url
 
-def get_product_reviews_and_ratings(product_name):
+def generate_verified_pie_chart(product_rows, user_reviews):
+    import datetime
+    df_pie = product_rows.copy()
+    if 'verified_purchase' not in df_pie.columns:
+        return None
+    df_pie = df_pie[df_pie['verified_purchase'].notnull()]
+    # Merge user reviews as verified purchases
+    if user_reviews and len(user_reviews) > 0:
+        now = datetime.datetime.now()
+        user_df = pd.DataFrame([{
+            'review_text': r['text'],
+            'review_date': now + datetime.timedelta(seconds=i),
+            'verified_purchase': True
+        } for i, r in enumerate(user_reviews)])
+        for col in df_pie.columns:
+            if col not in user_df.columns:
+                user_df[col] = None
+        user_df = user_df[df_pie.columns]
+        user_df['verified_purchase'] = True
+        df_pie = pd.concat([df_pie, user_df], ignore_index=True)
+    # Only count True/False, ignore NaN
+    verified_count = df_pie[df_pie['verified_purchase'] == True].shape[0]
+    non_verified_count = df_pie[df_pie['verified_purchase'] == False].shape[0]
+    if verified_count + non_verified_count == 0:
+        return None
+    labels = []
+    sizes = []
+    colors = []
+    explode = []
+    if verified_count > 0:
+        labels.append('Verified')
+        sizes.append(verified_count)
+        colors.append('#22c55e')
+        explode.append(0.05)
+    if non_verified_count > 0:
+        labels.append('Non-Verified')
+        sizes.append(non_verified_count)
+        colors.append('#ef4444')
+        explode.append(0.05)
+    plt.figure(figsize=(17.6, 14.4))  # 80% of (22, 18)
+    ax = plt.gca()
+    ax.set_aspect('auto')
+    wedges, texts, autotexts = plt.pie(
+        sizes, labels=labels, autopct='%1.0f%%', colors=colors, startangle=90,
+        textprops={'color':'#fff', 'fontsize':24}, explode=explode, shadow=True
+    )
+    for w in wedges:
+        w.set_edgecolor('#232336')
+    plt.title('Verified Purchase Ratio', fontsize=28, color='#22c55e')
+    plt.tight_layout(pad=2)
+    buf = io.BytesIO()
+    # Set background to white for the pie chart
+    plt.savefig(buf, format='png', bbox_inches='tight', transparent=False, dpi=200, facecolor='white')
+    buf.seek(0)
+    plot_url = base64.b64encode(buf.getvalue()).decode('utf8')
+    plt.close()
+    return plot_url
+
+def get_product_reviews_and_ratings(product_name, return_rows=False):
     """
     Returns a list of (review_text, rating) tuples for the given product_name.
     Adjusted to match your dataset.csv columns:
@@ -92,11 +208,13 @@ def get_product_reviews_and_ratings(product_name):
 
     product_rows = df[df[product_col] == product_name]
     reviews_and_ratings = list(zip(product_rows[review_col].astype(str), product_rows[rating_col].astype(int)))
+    if return_rows:
+        return reviews_and_ratings, product_rows
     return reviews_and_ratings
 
 def analyze_product(product_name):
-    # Get original reviews and ratings
-    reviews_and_ratings = get_product_reviews_and_ratings(product_name)
+    # Get original reviews and ratings and product_rows
+    reviews_and_ratings, product_rows = get_product_reviews_and_ratings(product_name, return_rows=True)
     review_texts = [r[0] for r in reviews_and_ratings]
     ratings = [r[1] for r in reviews_and_ratings]
 
@@ -116,9 +234,12 @@ def analyze_product(product_name):
     else:
         recommendation = "Don't Buy"
 
-    plot_url = generate_bar_chart(ratings, sentiments)
+    # Pass user_reviews to all chart functions for real-time analytics
+    plot_url = generate_bar_chart(ratings, sentiments, user_reviews=user_reviews)
+    sentiment_time_url = generate_sentiment_over_time_chart(product_rows, user_reviews)
+    verified_pie_url = generate_verified_pie_chart(product_rows, user_reviews)
     result = f"Average Rating: {avg_rating} | Average Sentiment: {avg_sentiment} | Recommendation: {recommendation}"
-    return plot_url, result, avg_rating, avg_sentiment, recommendation
+    return plot_url, result, avg_rating, avg_sentiment, recommendation, sentiment_time_url, verified_pie_url
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
@@ -131,6 +252,8 @@ def index():
     avg_rating = None
     avg_sentiment = None
     recommendation = None
+    sentiment_time_url = None
+    verified_pie_url = None
 
     if request.method == 'POST':
         if request.form.get('submit_review'):
@@ -159,7 +282,7 @@ def index():
                     user_rating = 3
                 user_reviews_db.setdefault(product_name, []).append({'text': user_review, 'rating': user_rating})
                 # Recalculate product stats (includes user review)
-                plot_url, result, avg_rating, avg_sentiment, recommendation = analyze_product(product_name)
+                plot_url, result, avg_rating, avg_sentiment, recommendation, sentiment_time_url, verified_pie_url = analyze_product(product_name)
                 # Ensure user sentiment is always passed to template after review submission
                 return render_template(
                     'index.html',
@@ -172,10 +295,12 @@ def index():
                     avg_rating=avg_rating,
                     avg_sentiment=avg_sentiment,
                     recommendation=recommendation,
+                    sentiment_time_url=sentiment_time_url,
+                    verified_pie_url=verified_pie_url,
                 )
         product_name = request.form.get('product_name', '')
         if product_name:
-            plot_url, result, avg_rating, avg_sentiment, recommendation = analyze_product(product_name)
+            plot_url, result, avg_rating, avg_sentiment, recommendation, sentiment_time_url, verified_pie_url = analyze_product(product_name)
             # Show the latest user review sentiment if available
             user_reviews = user_reviews_db.get(product_name, [])
             if user_reviews:
@@ -208,6 +333,8 @@ def index():
             avg_rating=avg_rating,
             avg_sentiment=avg_sentiment,
             recommendation=recommendation,
+            sentiment_time_url=sentiment_time_url,
+            verified_pie_url=verified_pie_url,
         )
     return render_template(
         'index.html',
@@ -220,6 +347,8 @@ def index():
         avg_rating=avg_rating,
         avg_sentiment=avg_sentiment,
         recommendation=recommendation,
+        sentiment_time_url=sentiment_time_url,
+        verified_pie_url=verified_pie_url,
     )
 
 @app.route('/product_names')
@@ -238,6 +367,8 @@ def submit_review():
     recommendation = None
     plot_url = None
     result = None
+    sentiment_time_url = None
+    verified_pie_url = None
 
     if user_review and product_name:
         # Translate user review to English for sentiment analysis
@@ -262,7 +393,7 @@ def submit_review():
             user_rating = 3
         user_reviews_db.setdefault(product_name, []).append({'text': user_review, 'rating': user_rating})
         # Recalculate product stats (includes user review)
-        plot_url, result, avg_rating, avg_sentiment, recommendation = analyze_product(product_name)
+        plot_url, result, avg_rating, avg_sentiment, recommendation, sentiment_time_url, verified_pie_url = analyze_product(product_name)
     return jsonify({
         'user_sentiment_score': user_sentiment_score,
         'user_sentiment_category': user_sentiment_category,
@@ -270,9 +401,14 @@ def submit_review():
         'avg_sentiment': avg_sentiment,
         'recommendation': recommendation,
         'plot_url': plot_url,
-        'result': result
+        'result': result,
+        'sentiment_time_url': sentiment_time_url,
+        'verified_pie_url': verified_pie_url,
     })
 
+if __name__ == '__main__':
+    nltk.download('punkt')
+    app.run(port=8000, debug=True)
 if __name__ == '__main__':
     nltk.download('punkt')
     app.run(port=8000, debug=True)
